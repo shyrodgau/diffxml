@@ -168,6 +168,15 @@ static int parseDlines1(unsigned int l, dl **ls, unsigned int *pn, unsigned int 
 			memset(myl, 0, sizeof(dl));
 		}
 	}
+	if (!memcmp(filelines.lstart[l],"\\ No newline", 12))
+	{
+                myl->next = malloc(sizeof(dl));
+                myl = myl->next;
+                memset(myl, 0, sizeof(dl));
+		myl->line = filelines.lstart[l];
+		//(*pn)++;
+	}
+
 	return (*pn + 1);
 }
 
@@ -257,7 +266,7 @@ static void parseFile()
 	{
 		if (memcmp(filelines.lstart[l],"diff ", 5))
 		{
-			fprintf(stderr,"Parsing at line %d unexpected, not diff: \'%s\'\n",l, filelines.lstart[l]);
+			if (l) fprintf(stderr,"Parsing at line %d unexpected, not diff: \'%s\'\n",l, filelines.lstart[l]);
 			l--;
 		}
 //		else
@@ -362,6 +371,7 @@ void toxml(dfile *df)
 int main (int argc, char ** argv)
 {
 	int n = fread(buf, 1, BUFSIZE, stdin);
+	if (!n) return 0;
 	breakFile(n);
 	parseFile();
 	toxml(dfiles);
