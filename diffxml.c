@@ -9,18 +9,18 @@
 *
 * echo '<diffs>' > diff.xml
 * diff -N -w -r -p dira/ dirb/ | diffxml >> diff.xml
-* echo '</diff>' >> diff.xml
+* echo '</diffs>' >> diff.xml
 * 
 * for example linux kernels, breaking it down across the toplevel directory structure
 * to make the chunks smaller and the output better structured:
 *
 * echo '<knldiffs>' > knldiffs.xml
-* for f in $( for d in linux-4.14.1/_* linux-4.14.2/_* # replace 2x _ -> ' '
+* for f in $( for d in linux-4.14.1/_* linux-4.14.2/_* # remove 2x _
 * do
-*    echo ${d##*_/} # replace  _ -> ' '
+*    echo ${d##*_/} # remove  _ 
 * done |sort -u )
 * do
-     echo '<'blk n="'$f'">' >> knldiffs.xml
+     echo '<blk n="'$f'">' >> knldiffs.xml
 *    diff  -N -w -r -p linux-4.14.1/$f linux-4.14.2/$f | diffxml >> knldiffs.xml
      echo '</blk>' >> knldiffs.xml
 * done
