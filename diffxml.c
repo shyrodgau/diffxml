@@ -14,30 +14,37 @@
 * for example linux kernels, breaking it down across the toplevel directory structure
 * to make the chunks smaller and the output better structured:
 *
+* d1=linux-4.14.1
+* d2=linux-4.14.2
 * echo '<knldiffs>' > knldiffs.xml
-* for f in $( for d in linux-4.14.1/_* linux-4.14.2/_* # remove 2x _
+* for f in $( for d in ${d1}/_* ${d2}/_* # remove 2x _
 * do
 *    echo ${d##*_/} # remove  _ 
 * done |sort -u )
 * do
-     echo '<blk n="'$f'">' >> knldiffs.xml
-*    diff  -N -w -r -p linux-4.14.1/$f linux-4.14.2/$f | diffxml >> knldiffs.xml
-     echo '</blk>' >> knldiffs.xml
+*    echo '<blk n="'$f'">' >> knldiffs.xml
+*    diff  -N -w -r -p ${d1}/$f ${d2}2/$f > /tmp/x; diffxml /tmp/x >> knldiffs.xml
+*    echo '</blk>' >> knldiffs.xml
 * done
 * echo '</knldiffs>' >> knldiffs.xml
 *
 */
 
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 
 
 #define BUFSIZE 12000000
 #define AUXSIZE 256
 
 
-char buf[BUFSIZE + 1];
+char *buf;
 
 
 typedef struct _dl {
@@ -70,7 +77,7 @@ dfile *dfiles = NULL;
 
 struct _filelines {
 	unsigned int nlines;
-	char *lstart[BUFSIZE];
+	char **lstart;
 } filelines;
 
 
@@ -90,7 +97,7 @@ static void breakFile(unsigned int insize)
 {
 	char *f = buf;
 	int i=0;
-	memset(&filelines,0,sizeof(filelines));
+	filelines.nlines = 0;
 
 	filelines.lstart[0] = buf;
 	
@@ -370,11 +377,46 @@ void toxml(dfile *df)
 
 int main (int argc, char ** argv)
 {
-	int n = fread(buf, 1, BUFSIZE, stdin);
-	if (!n) return 0;
+	struct stat mystat;
+	if (argc < 2)
+	{
+		fprintf(stderr,"Usage: %s filename\n", argv[0]);
+		exit(1);
+	}
+	if (stat(argv[1], &mystat))
+	{
+		perror("Failed to get length of input file");
+		exit(2);
+	}
+	buf = malloc(mystat.st_size + 1);
+	if (!buf)
+	{
+		perror("Failed to alloc buffer for input file");
+		exit(3);
+	}
+	filelines.lstart = malloc(sizeof(char*) * mystat.st_size);
+	if (!filelines.lstart)
+	{
+		perror("Failed to alloc buffer for input file lines");
+		exit(4);
+	}
+	FILE *fh = fopen(argv[1],"r");
+	if (!fh)
+	{
+		perror("Failed to open input file");
+		exit(5);
+	}
+	
+	int n = fread(buf, 1, mystat.st_size + 1, fh);
+	fclose(fh);
+	if (n < mystat.st_size)
+	{
+		fprintf(stderr,"Could only read %d B from input file, expected %d\n", n, (int)mystat.st_size);
+		exit(6);
+	}
 	breakFile(n);
 	parseFile();
-	toxml(dfiles);
+	if (dfiles) toxml(dfiles);
 	return 0;
 }
 
